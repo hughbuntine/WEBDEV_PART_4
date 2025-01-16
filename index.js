@@ -1,20 +1,9 @@
-const express = require('express')
-const app = express()
-app.use(express.json());
-
-const cors = require('cors')
 const connectDB = require('./mongo.js');
-require('dotenv').config();
-
-
-app.use(cors())
-
-const blogsRouter = require('./controllers/blogs.js')
-app.use('/api/blogs', blogsRouter)
-
-
+const app = require('./app') // The Express app
+const config = require('./utils/config')
+const logger = require('./utils/logger')
 // Connect to DB then start server
-const PORT = 3003
+const PORT = config.PORT
 connectDB().then(() => {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
