@@ -1,10 +1,21 @@
 const blogsRouter = require('express').Router()
 const Blog = require('../models/blog.js')
+const User = require('../models/user.js')
 const mongoose = require('mongoose')
+const jwt = require('jsonwebtoken')
+const config = require('../utils/config')
+
+const getTokenFrom = request => {
+    const authorization = request.get('authorization')
+    if (authorization && authorization.startsWith('Bearer ')) {
+      return authorization.replace('Bearer ', '')
+    }
+    return null
+  }
 
 blogsRouter.get('/', async (request, response) => {
     try {
-        const blogs = await Blog.find({})
+        const blogs = await Blog.find({}).populate('user', { username: 1, name: 1 })
         response.json(blogs)
     } catch (error) {
         response.status(500).json({ error: 'Internal Server Error' })
@@ -13,8 +24,20 @@ blogsRouter.get('/', async (request, response) => {
   
 blogsRouter.post('/', async (request, response) => {
     try {
-        const blog = new Blog(request.body)
+        const body = request.body
+        const decodedToken = jwt.verify(getTokenFrom(request), config.SECRET)
+        if (!decodedToken.id) {
+        return response.status(401).json({ error: 'token invalid' })
+        }
+        const user = await User.findById(decodedToken.id)
+
+        const blog = new Blog(body)
+        blog.user = user._id
         const result = await blog.save()
+
+        user.blogs = user.blogs.concat(result._id)
+        await user.save()
+
         response.status(201).json(result)
     } catch (error) {
         response.status(500).json({ error: 'Internal Server Error' })
